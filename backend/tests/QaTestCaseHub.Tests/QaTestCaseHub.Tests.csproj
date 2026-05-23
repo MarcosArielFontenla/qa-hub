@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shared\QaTestCaseHub.Shared.Infrastructure\QaTestCaseHub.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Shared\QaTestCaseHub.Shared.Contracts\QaTestCaseHub.Shared.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\TestCases\QaTestCaseHub.Modules.TestCases.Application\QaTestCaseHub.Modules.TestCases.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\TestCases\QaTestCaseHub.Modules.TestCases.Infrastructure\QaTestCaseHub.Modules.TestCases.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Dashboard\QaTestCaseHub.Modules.Dashboard.Application\QaTestCaseHub.Modules.Dashboard.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Executions\QaTestCaseHub.Modules.Executions.Application\QaTestCaseHub.Modules.Executions.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Executions\QaTestCaseHub.Modules.Executions.Infrastructure\QaTestCaseHub.Modules.Executions.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\QaTestCaseHub.Modules.TestCases.Domain\QaTestCaseHub.Modules.TestCases.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\QaTestCaseHub.Shared.Abstractions\QaTestCaseHub.Shared.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Shared\QaTestCaseHub.Shared.Contracts\QaTestCaseHub.Shared.Contracts.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\QaTestCaseHub.Modules.Dashboard.Domain\QaTestCaseHub.Modules.Dashboard.Domain.csproj" />
+    <ProjectReference Include="..\QaTestCaseHub.Modules.Dashboard.Application\QaTestCaseHub.Modules.Dashboard.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\QaTestCaseHub.Shared.Infrastructure\QaTestCaseHub.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\Shared\QaTestCaseHub.Shared.Abstractions\QaTestCaseHub.Shared.Abstractions.csproj" />
+    <ProjectReference Include="..\..\..\Shared\QaTestCaseHub.Shared.Contracts\QaTestCaseHub.Shared.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.7" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
