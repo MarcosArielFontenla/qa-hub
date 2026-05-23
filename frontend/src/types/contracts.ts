@@ -80,6 +80,7 @@ export interface DashboardSummaryDto {
 
 export interface JiraSettingsDto {
   baseUrl?: string | null;
+  email?: string | null;
   projectKey?: string | null;
   testCaseIssueType: string;
   bugIssueType: string;

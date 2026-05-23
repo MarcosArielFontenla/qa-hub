@@ -20,4 +20,5 @@ public interface IExecutionStore
 {
     Task<TestExecutionDto> CreateAsync(TestExecutionDto execution, CancellationToken cancellationToken);
     Task<IReadOnlyList<TestExecutionDto>> GetForTestCaseAsync(Guid testCaseId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<TestExecutionDto>> GetRecentAsync(int take, CancellationToken cancellationToken);
 }

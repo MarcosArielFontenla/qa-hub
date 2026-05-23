@@ -20,4 +20,10 @@ public sealed class ExecutionsController(ExecutionApplicationService executionSe
     {
         return Ok(await executionService.GetForTestCaseAsync(testCaseId, cancellationToken));
     }
+
+    [HttpGet("executions")]
+    public async Task<ActionResult<IReadOnlyList<TestExecutionDto>>> GetRecent([FromQuery] int take, CancellationToken cancellationToken)
+    {
+        return Ok(await executionService.GetRecentAsync(take <= 0 ? 20 : take, cancellationToken));
+    }
 }

@@ -24,6 +24,7 @@ public sealed class JiraOptions
     {
         return new JiraSettingsDto(
             BaseUrl,
+            Email,
             ProjectKey,
             TestCaseIssueType,
             BugIssueType,

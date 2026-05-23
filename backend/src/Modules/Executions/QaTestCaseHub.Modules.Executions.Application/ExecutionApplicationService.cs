@@ -63,4 +63,7 @@ public sealed class ExecutionApplicationService(
 
     public Task<IReadOnlyList<TestExecutionDto>> GetForTestCaseAsync(Guid testCaseId, CancellationToken cancellationToken)
         => executionStore.GetForTestCaseAsync(testCaseId, cancellationToken);
+
+    public Task<IReadOnlyList<TestExecutionDto>> GetRecentAsync(int take, CancellationToken cancellationToken)
+        => executionStore.GetRecentAsync(take, cancellationToken);
 }

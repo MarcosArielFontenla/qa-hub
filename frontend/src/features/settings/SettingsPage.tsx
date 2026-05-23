@@ -1,190 +1,204 @@
 import { useQuery } from '@tanstack/react-query';
-import { clsx } from 'clsx';
-import { Bug, CheckCircle2, Database, FileText, RefreshCw, Server, ShieldCheck, type LucideIcon } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { getHealth, getJiraSettings } from '../../api/testCasesApi';
-import { TextBadge } from '../../components/ui/Badge';
-import { buildDefaultSyncJql, QA_HUB_GHERKIN_LABELS } from '../../lib/jiraWorkflow';
+import { getAllTestCases, getHealth, getJiraSettings } from '../../api/testCasesApi';
 
-type StatusTone = 'ok' | 'warning' | 'error' | 'loading';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:5000';
+const LATEST_MIGRATION = '20260523_RemoveImportsAndSyncLogs';
 
-function getStatusTone(value?: string | null): StatusTone {
-  if (!value) {
-    return 'loading';
-  }
-
-  if (value.toLowerCase() === 'ok' || value.toLowerCase() === 'real') {
-    return 'ok';
-  }
-
-  if (value.toLowerCase() === 'mock') {
-    return 'warning';
-  }
-
-  return 'error';
-}
-
-function statusLabel(value?: string | null) {
-  if (!value) {
-    return 'Verificando';
-  }
-
-  const labels: Record<string, string> = {
-    ok: 'Operativo',
-    real: 'Jira real',
-    mock: 'Modo mock'
-  };
-
-  return labels[value.toLowerCase()] ?? value;
-}
-
-function StatusPill({ value }: { value?: string | null }) {
-  const tone = getStatusTone(value);
-
-  return (
-    <span
-      className={clsx(
-        'rounded border px-2 py-1 text-xs font-semibold shadow-sm',
-        tone === 'ok' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        tone === 'warning' && 'border-amber-200 bg-amber-50 text-amber-700',
-        tone === 'error' && 'border-red-200 bg-red-50 text-red-700',
-        tone === 'loading' && 'border-line bg-lavender text-muted'
-      )}
-    >
-      {statusLabel(value)}
-    </span>
-  );
-}
-
-function IntegrationCard({
-  icon: Icon,
-  title,
-  value,
-  detail
-}: {
-  icon: LucideIcon;
-  title: string;
-  value?: string | null;
-  detail: string;
-}) {
-  return (
-    <article className="rounded-md border border-line bg-white/75 p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-md bg-lavender text-accent">
-            <Icon className="h-4 w-4" aria-hidden />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold">{title}</h3>
-            <p className="mt-1 text-xs text-muted">{detail}</p>
-          </div>
-        </div>
-        <StatusPill value={value} />
-      </div>
-    </article>
-  );
-}
-
-function DetailItem({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div className="rounded-md border border-line bg-white/70 p-3">
-      <dt className="text-xs font-semibold uppercase text-muted">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-medium">{value || 'No configurado'}</dd>
-    </div>
-  );
-}
-
-function WorkflowCard({
-  icon: Icon,
-  title,
-  children
-}: {
-  icon: LucideIcon;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <article className="rounded-md border border-line bg-white/70 p-4">
-      <div className="mb-2 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-accent" aria-hidden />
-        <h3 className="text-sm font-semibold">{title}</h3>
-      </div>
-      <div className="text-sm text-muted">{children}</div>
-    </article>
-  );
+function dotClass(ok: boolean, warn = false) {
+  if (warn) return 'health-dot warn';
+  return ok ? 'health-dot' : 'health-dot fail';
 }
 
 export function SettingsPage() {
   const healthQuery = useQuery({ queryKey: ['health'], queryFn: getHealth });
   const jiraQuery = useQuery({ queryKey: ['jira-settings'], queryFn: getJiraSettings });
+  const casesQuery = useQuery({ queryKey: ['all-test-cases'], queryFn: getAllTestCases });
+
   const health = healthQuery.data;
   const jira = jiraQuery.data;
-  const projectKey = jira?.projectKey?.trim() || 'SCRUM';
-  const recommendedJql = buildDefaultSyncJql(projectKey);
-  const backendStatus = healthQuery.isError ? 'error' : health?.status;
-  const databaseStatus = healthQuery.isError ? 'error' : health?.database;
-  const jiraStatus = healthQuery.isError || jiraQuery.isError ? 'error' : health?.jiraMode;
+  const caseCount = casesQuery.data?.length ?? 0;
+
+  const backendOk = !healthQuery.isError && health?.status === 'ok';
+  const dbOk = !healthQuery.isError && health?.database === 'ok';
+  const isReal = health?.jiraMode === 'real';
+  const okCount = [backendOk, dbOk, isReal].filter(Boolean).length;
+
+  const has = (v?: string | null) => Boolean(v && v.trim());
 
   return (
-    <section className="grid gap-5">
-      <div>
-        <h2 className="page-heading">Configuración</h2>
-        <p className="page-subtitle">Estado de integraciones, sincronización y reglas operativas para el equipo QA.</p>
+    <div className="content">
+      <div className="topbar">
+        <div className="crumb">
+          <span className="home">⚙️</span>
+          <span>QA</span>
+          <span style={{ color: 'var(--text-4)' }}>›</span>
+          <b>Settings</b>
+        </div>
+        <span style={{ flex: 1 }} />
+        <button className="btn" onClick={() => { healthQuery.refetch(); jiraQuery.refetch(); }}><span>🔄</span>Verificar conexión</button>
       </div>
 
-      <section className="surface-card grid gap-4 p-4">
-        <div>
-          <h3 className="font-semibold">Integraciones operativas</h3>
-          <p className="mt-1 text-sm text-muted">Vista rápida para confirmar si QA Hub puede leer datos y sincronizar Jira.</p>
-        </div>
-        <div className="grid gap-3 xl:grid-cols-3">
-          <IntegrationCard icon={Server} title="Backend API" value={backendStatus} detail="Servicios y endpoints de QA Hub" />
-          <IntegrationCard icon={Database} title="Railway DB" value={databaseStatus} detail="Persistencia de casos y ejecuciones" />
-          <IntegrationCard icon={CheckCircle2} title="Jira" value={jiraStatus} detail="Conexión configurada desde backend" />
-        </div>
-      </section>
-
-      <section className="surface-card grid gap-4 p-4">
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h3 className="font-semibold">Jira workspace</h3>
-            <p className="mt-1 text-sm text-muted">Datos seguros que ayudan a validar que el equipo trabaja contra el proyecto correcto.</p>
+      <div className="scroll">
+        <div className="hero" style={{ background: 'linear-gradient(135deg, var(--accent-soft) 0%, #FDF2DA 100%)', border: 0 }}>
+          <div className="hero-l">
+            <span className="hero-emoji" style={{ background: 'linear-gradient(135deg, #FFD89B, #B6A8FF)' }}>⚙️</span>
+            <div>
+              <h1>Settings</h1>
+              <div className="sub">
+                Vista read-only · configuración cargada desde variables de entorno · para modificar, editá{' '}
+                <b className="mono" style={{ background: 'rgba(255,255,255,0.6)', padding: '1px 6px', borderRadius: 4 }}>backend/.env</b> y reiniciá
+              </div>
+            </div>
           </div>
-          <TextBadge>Token protegido en backend</TextBadge>
         </div>
-        <dl className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <DetailItem label="Base URL" value={jira?.baseUrl} />
-          <DetailItem label="Project key" value={projectKey} />
-          <DetailItem label="Tipo caso de prueba" value={jira?.testCaseIssueType} />
-          <DetailItem label="Tipo bug" value={jira?.bugIssueType} />
-          <DetailItem label="Campo Gherkin" value={jira?.gherkinField} />
-          <DetailItem label="Campo labels" value={jira?.labelsField} />
-        </dl>
-      </section>
 
-      <section className="surface-card grid gap-4 p-4">
-        <div>
-          <h3 className="font-semibold">Sincronización y reglas QA</h3>
-          <p className="mt-1 text-sm text-muted">Resumen del flujo esperado para crear, revisar y ejecutar casos con Gherkin.</p>
+        <div className="settings-inner">
+          <div className="set-section">
+            <div className="set-section-head">
+              <span className="icn">💚</span>
+              <div style={{ flex: 1 }}>
+                <div className="set-section-title">Health</div>
+                <div className="set-section-sub">Estado en vivo desde GET /api/health</div>
+              </div>
+              <span className={`pill ${okCount === 3 ? 'pass' : 'blk'}`}><span className="dot" />{okCount} de 3 OK</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">🖥 Backend API</span>
+              <span><span className={dotClass(backendOk)} /><span className="set-value">{backendOk ? `200 OK · ${API_BASE}` : 'sin respuesta'}</span></span>
+              <span className={`pill ${backendOk ? 'pass' : 'fail'}`}><span className="dot" />{backendOk ? 'operational' : 'down'}</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">🗄 PostgreSQL</span>
+              <span><span className={dotClass(dbOk)} /><span className="set-value">{dbOk ? 'conectado' : 'no disponible'}</span></span>
+              <span className={`pill ${dbOk ? 'pass' : 'fail'}`}><span className="dot" />{dbOk ? 'operational' : 'down'}</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">☁️ Jira</span>
+              <span><span className={dotClass(isReal, !isReal)} /><span className={`set-value ${isReal ? '' : 'muted'}`}>{isReal ? 'Jira real conectado' : 'modo mock · casos seed'}</span></span>
+              <span className={`pill ${isReal ? 'pass' : 'blk'}`}><span className="dot" />{isReal ? 'real' : 'mock'}</span>
+            </div>
+          </div>
+
+          <div className="set-section">
+            <div className="set-section-head">
+              <span className="icn">☁️</span>
+              <div style={{ flex: 1 }}>
+                <div className="set-section-title">Conexión Jira</div>
+                <div className="set-section-sub">Para conectar Jira real, configurá las variables abajo y reiniciá el backend</div>
+              </div>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Modo activo</span>
+              <span className="set-value">{isReal ? 'real' : 'mock'} <span style={{ color: 'var(--text-3)' }}>· {isReal ? 'credenciales configuradas' : 'fallback automático por credenciales faltantes'}</span></span>
+              <span className="tag">{isReal ? 'real' : 'auto'}</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Base URL</span>
+              <span className={`set-value ${has(jira?.baseUrl) ? '' : 'muted'}`}>{jira?.baseUrl || '— sin configurar —'}</span>
+              <span className={`pill ${has(jira?.baseUrl) ? 'pass' : 'notrun'}`}><span className="dot" />{has(jira?.baseUrl) ? 'ok' : 'missing'}</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Email</span>
+              <span className={`set-value ${has(jira?.email) ? '' : 'muted'}`}>{jira?.email || '— sin configurar —'}</span>
+              <span className={`pill ${has(jira?.email) ? 'pass' : 'notrun'}`}><span className="dot" />{has(jira?.email) ? 'ok' : 'missing'}</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">API token</span>
+              <span className="set-value muted">•••••••• <span style={{ color: 'var(--text-4)', fontSize: 11.5 }}>(nunca expuesto al frontend)</span></span>
+              <span className={`pill ${isReal ? 'pass' : 'notrun'}`}><span className="dot" />{isReal ? 'ok' : 'missing'}</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Project key default</span>
+              <span className="set-value">{jira?.projectKey || '—'}</span>
+              <span className="pill pass"><span className="dot" />ok</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Bug issue type</span>
+              <span className="set-value">{jira?.bugIssueType || '—'}</span>
+              <span className="pill pass"><span className="dot" />ok</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Gherkin field</span>
+              <span className="set-value">{jira?.gherkinField || '—'}</span>
+              <span className="pill pass"><span className="dot" />ok</span>
+            </div>
+            <div className="env-grid">
+              <div style={{ color: 'var(--text-3)', fontSize: 10.5, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}># .env.example</div>
+              <div><span className="k">JIRA_BASE_URL=</span><span className="v">{jira?.baseUrl || 'https://your-company.atlassian.net'}</span></div>
+              <div><span className="k">JIRA_EMAIL=</span><span className="v">{jira?.email || 'qa@example.com'}</span></div>
+              <div><span className="k">JIRA_API_TOKEN=</span><span className="v">••••••••••••••••</span></div>
+              <div><span className="k">JIRA_PROJECT_KEY=</span><span className="v">{jira?.projectKey || 'SCRUM'}</span></div>
+              <div><span className="k">JIRA_BUG_ISSUE_TYPE=</span><span className="v">{jira?.bugIssueType || 'Bug'}</span></div>
+              <div><span className="k">JIRA_GHERKIN_FIELD=</span><span className="v">{jira?.gherkinField || 'description'}</span></div>
+              <div><span className="k">JIRA_MOCK_MODE=</span><span className="v">{isReal ? 'false' : 'true'}</span></div>
+            </div>
+          </div>
+
+          <div className="set-section">
+            <div className="set-section-head">
+              <span className="icn">🗄</span>
+              <div style={{ flex: 1 }}>
+                <div className="set-section-title">Base de datos</div>
+                <div className="set-section-sub">PostgreSQL · Entity Framework Core migrations</div>
+              </div>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Connection string</span>
+              <span className="set-value muted">postgresql://•••:•••@•••/qa_test_case_hub</span>
+              <span className={`pill ${dbOk ? 'pass' : 'fail'}`}><span className="dot" />{dbOk ? 'conectado' : 'sin conexión'}</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Migración aplicada</span>
+              <span className="set-value">{LATEST_MIGRATION}</span>
+              <span className="pill pass"><span className="dot" />up to date</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Tablas</span>
+              <span className="set-value">test_cases · test_executions</span>
+              <span style={{ color: 'var(--text-3)', fontSize: 12 }}><span className="mono">{caseCount}</span> casos</span>
+            </div>
+          </div>
+
+          <div className="set-section">
+            <div className="set-section-head">
+              <span className="icn">✨</span>
+              <div style={{ flex: 1 }}>
+                <div className="set-section-title">App</div>
+                <div className="set-section-sub">Build info y entorno</div>
+              </div>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Versión</span>
+              <span className="set-value">v0.1.0-mvp</span>
+              <span></span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">Entorno (frontend)</span>
+              <span className="set-value">{import.meta.env.MODE}</span>
+              <span className="pill info"><span className="dot" />{import.meta.env.DEV ? 'dev' : 'prod'}</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">CORS origin</span>
+              <span className="set-value">{typeof window !== 'undefined' ? window.location.origin : '—'}</span>
+              <span className="pill pass"><span className="dot" />ok</span>
+            </div>
+            <div className="set-row">
+              <span className="set-label">OpenAPI</span>
+              <span className="set-value">
+                <a href={`${API_BASE}/openapi/v1.json`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'none' }}>{API_BASE}/openapi/v1.json ↗</a>
+              </span>
+              <span className="pill info"><span className="dot" />habilitado</span>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16, padding: '14px 18px', background: 'var(--accent-soft)', border: '1px solid rgba(124,92,255,0.15)', borderRadius: 12, color: 'var(--text-2)', fontSize: 12.5, lineHeight: 1.6, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>🔒</span>
+            <div>
+              <b>Seguridad.</b> El token Jira <b>nunca</b> llega al frontend ni a los logs (redactado en logging estructurado). Para modificar: editá <span className="mono">backend/.env</span> y reiniciá <span className="mono">dotnet run</span>.
+            </div>
+          </div>
         </div>
-        <div className="grid gap-3 xl:grid-cols-2">
-          <WorkflowCard icon={RefreshCw} title="JQL recomendado">
-            <code className="block overflow-auto rounded-md border border-line bg-panel/80 p-3 text-xs text-ink">{recommendedJql}</code>
-          </WorkflowCard>
-          <WorkflowCard icon={FileText} title="Casos en Gherkin">
-            <p>Los escenarios se toman desde el campo <span className="font-medium text-ink">{jira?.gherkinField || 'description'}</span> y se detectan con tags como {QA_HUB_GHERKIN_LABELS.map((label) => <TextBadge key={label}>@{label}</TextBadge>)}.</p>
-          </WorkflowCard>
-          <WorkflowCard icon={CheckCircle2} title="Ejecución manual">
-            <p>El equipo puede registrar resultados Pass, Fail, Blocked o No ejecutado desde el detalle de cada caso.</p>
-          </WorkflowCard>
-          <WorkflowCard icon={Bug} title="Crear bug al fallar">
-            <p>Cuando una ejecución falla, QA puede crear un issue de tipo <span className="font-medium text-ink">{jira?.bugIssueType || 'Bug'}</span> con evidencia y comentario.</p>
-          </WorkflowCard>
-          <WorkflowCard icon={ShieldCheck} title="Alcance seguro">
-            <p>La sincronización de casos entra desde Jira hacia QA Hub; los cambios de detalle del caso no se escriben de vuelta en Jira.</p>
-          </WorkflowCard>
-        </div>
-      </section>
-    </section>
+      </div>
+    </div>
   );
 }

@@ -2,6 +2,7 @@ namespace QaTestCaseHub.Shared.Contracts.Jira;
 
 public sealed record JiraSettingsDto(
     string? BaseUrl,
+    string? Email,
     string? ProjectKey,
     string TestCaseIssueType,
     string BugIssueType,

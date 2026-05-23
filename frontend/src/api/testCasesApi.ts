@@ -31,6 +31,16 @@ export async function getTestCases(query: TestCaseQuery) {
   return response.data;
 }
 
+export async function getAllTestCases() {
+  const response = await httpClient.get<TestCaseListResponse>('/api/test-cases', { params: { page: 1, pageSize: 200 } });
+  return response.data.items;
+}
+
+export async function getRecentExecutions(take = 20) {
+  const response = await httpClient.get<TestExecutionDto[]>('/api/executions', { params: { take } });
+  return response.data;
+}
+
 export async function syncJira(jql: string) {
   const response = await httpClient.post<SyncJiraResponse>('/api/jira/sync', { jql, maxResults: 200 });
   return response.data;

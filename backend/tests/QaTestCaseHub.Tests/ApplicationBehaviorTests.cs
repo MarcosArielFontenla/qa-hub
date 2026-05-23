@@ -29,7 +29,7 @@ public sealed class ApplicationBehaviorTests
 
         public bool IsMockMode => true;
 
-        public JiraSettingsDto GetSettings() => new(null, "QA", "Sub-task", "Bug", "description", "parent", "labels", true);
+        public JiraSettingsDto GetSettings() => new(null, null, "QA", "Sub-task", "Bug", "description", "parent", "labels", true);
 
         public Task<IReadOnlyList<JiraIssueDto>> SearchIssuesAsync(string jql, int maxResults, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<JiraIssueDto>>([]);

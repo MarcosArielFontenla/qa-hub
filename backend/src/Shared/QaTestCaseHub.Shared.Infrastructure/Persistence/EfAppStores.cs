@@ -250,6 +250,23 @@ public sealed class EfExecutionStore(QaHubDbContext dbContext, IClock clock) : I
         return results;
     }
 
+    public async Task<IReadOnlyList<TestExecutionDto>> GetRecentAsync(int take, CancellationToken cancellationToken)
+    {
+        var limit = Math.Clamp(take, 1, 100);
+        var records = await dbContext.TestExecutions.AsNoTracking()
+            .OrderByDescending(item => item.CreatedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        var results = new List<TestExecutionDto>();
+        foreach (var record in records)
+        {
+            results.Add(await ToDtoAsync(record, cancellationToken));
+        }
+
+        return results;
+    }
+
     private async Task<TestExecutionDto> ToDtoAsync(TestExecutionRecord record, CancellationToken cancellationToken)
     {
         var testCase = await dbContext.TestCases.AsNoTracking().FirstOrDefaultAsync(item => item.Id == record.TestCaseId, cancellationToken);
