@@ -60,6 +60,12 @@ export function fmtDate(iso?: string | null): string {
   return new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+// Builds a Jira "browse" URL for an issue/bug key. Returns null when either is missing.
+export function jiraBrowseUrl(baseUrl?: string | null, key?: string | null): string | null {
+  if (!baseUrl || !key) return null;
+  return `${baseUrl.replace(/\/+$/, '')}/browse/${key}`;
+}
+
 function escapeHtml(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

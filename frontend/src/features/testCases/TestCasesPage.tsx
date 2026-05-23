@@ -12,11 +12,13 @@ import {
   deriveProjects,
   emptyFilters,
   filterCases,
+  resultOf,
   toCsv,
   type CaseFilters
 } from '../../lib/selectors';
 import { useOpenSync } from '../../layout/AppLayout';
 import { TestCaseDrawer } from './TestCaseDrawer';
+import { NewTestCaseModal } from './NewTestCaseModal';
 import type { TestCaseDto } from '../../types/contracts';
 
 const AUTOMATION = ['ManualOnly', 'ReadyToAutomate', 'InAutomation', 'Automated', 'Flaky', 'Deprecated'];
@@ -27,7 +29,8 @@ const STATUS_SWATCH: Record<string, string> = {
   Done: 'var(--pass-fg)'
 };
 const RESULT_SWATCH: Record<string, string> = { Pass: 'var(--pass-dot)', Fail: 'var(--fail-dot)', Blocked: 'var(--blk-dot)', NotRun: '#CFC8DC' };
-const PAGE_SIZE = 8;
+const RESULT_CLASS: Record<string, string> = { Pass: 'pass', Fail: 'fail', Blocked: 'blk', NotRun: 'notrun' };
+const PAGE_SIZE = 9;
 
 function downloadCsv(cases: TestCaseDto[]) {
   const blob = new Blob([toCsv(cases)], { type: 'text/csv;charset=utf-8' });
@@ -43,6 +46,8 @@ export function TestCasesPage() {
   const openSync = useOpenSync();
   const [searchParams] = useSearchParams();
   const initialProject = searchParams.get('proj') ?? undefined;
+  const initialCase = searchParams.get('case');
+  const initialTab = searchParams.get('tab') === 'execute' ? 'execute' : 'gherkin';
 
   const casesQuery = useQuery({ queryKey: ['all-test-cases'], queryFn: getAllTestCases });
   const healthQuery = useQuery({ queryKey: ['health'], queryFn: getHealth });
@@ -50,8 +55,9 @@ export function TestCasesPage() {
 
   const [filters, setFilters] = useState<CaseFilters>(() => emptyFilters(initialProject));
   const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialCase);
   const [page, setPage] = useState(1);
+  const [newOpen, setNewOpen] = useState(false);
 
   useEffect(() => {
     if (initialProject) {
@@ -59,6 +65,12 @@ export function TestCasesPage() {
       setPage(1);
     }
   }, [initialProject]);
+
+  // Deep-link support: /test-cases?case=<id>&tab=execute opens a case directly
+  // (used by "Reportar bug" / "Ver caso" from the Bugs page).
+  useEffect(() => {
+    setSelectedId(initialCase);
+  }, [initialCase]);
 
   const setKey = (key: keyof CaseFilters) => (val: Set<string>) => {
     setFilters((f) => ({ ...f, [key]: val }));
@@ -119,6 +131,7 @@ export function TestCasesPage() {
           <span style={{ color: 'var(--text-3)' }}>🔍</span>
           <input placeholder="Buscar key, summary, feature…" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         </div>
+        <button className="btn" onClick={() => setNewOpen(true)}><span>➕</span>Nuevo caso</button>
         <button className="btn" onClick={() => downloadCsv(filtered)}><span>📤</span>CSV</button>
         <button className="btn primary" onClick={openSync}><span>🔄</span>Sincronizar</button>
       </div>
@@ -193,36 +206,37 @@ export function TestCasesPage() {
               <h2>Casos</h2>
               <span className="meta">· mostrando <b>{filtered.length === 0 ? 0 : Math.min((page - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(page * PAGE_SIZE, filtered.length)}</b> de <b>{filtered.length}</b></span>
             </div>
-            <div className="list">
-              {casesQuery.isLoading ? (
-                <Empty icon="⏳" title="Cargando casos…" />
-              ) : pageData.length === 0 ? (
-                <Empty icon="🔎" title="Ningún caso coincide" hint="Probá ajustar los filtros o limpiarlos." action={<button className="btn sm" onClick={clearAll}>✕ Limpiar filtros</button>} />
-              ) : (
-                pageData.map((tc) => (
-                  <div key={tc.id} className={`tcrow ${tc.id === selectedId ? 'active' : ''}`} onClick={() => setSelectedId(tc.id)}>
-                    <span className="tc-key">{tc.jiraIssueKey ?? 'LOCAL'}</span>
-                    <div>
-                      <div className="tc-sum">{tc.summary}</div>
+            {casesQuery.isError ? (
+              <Empty icon="⚠️" title="No se pudieron cargar los casos" hint="Verificá que el backend esté arriba (Settings → Estado)." />
+            ) : casesQuery.isLoading ? (
+              <Empty icon="⏳" title="Cargando casos…" />
+            ) : pageData.length === 0 ? (
+              <Empty icon="🔎" title="Ningún caso coincide" hint="Probá ajustar los filtros o limpiarlos." action={<button className="btn sm" onClick={clearAll}>✕ Limpiar filtros</button>} />
+            ) : (
+              <div className="tcgrid">
+                {pageData.map((tc) => (
+                  <div key={tc.id} className={`tccard ${RESULT_CLASS[resultOf(tc)] ?? 'notrun'} ${tc.id === selectedId ? 'active' : ''}`} onClick={() => setSelectedId(tc.id)}>
+                    <div className="tccard-top">
+                      <span className="tc-key">{tc.jiraIssueKey ?? 'LOCAL'}</span>
+                      <StatusPill r={tc.lastExecutionResult} />
+                    </div>
+                    <div className="tc-sum">{tc.summary}</div>
+                    <div className="tccard-foot">
                       <div className="tc-meta">
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                           {projEmoji(tc.projectKey)}
                           <b style={{ color: 'var(--text-2)', fontWeight: 600 }}>{tc.projectKey}</b>
                         </span>
-                        {tc.featureName && <><span className="dot" /><span>{tc.featureName}</span></>}
                         {tc.tags.length > 0 && <span className="dot" />}
                         {tc.tags.slice(0, 2).map((t) => <Tag key={t}>{t}</Tag>)}
                         {tc.tags.length > 2 && <span style={{ color: 'var(--text-4)', fontSize: 11 }}>+{tc.tags.length - 2}</span>}
                       </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <StatusPill r={tc.lastExecutionResult} />
-                      <Avatar person={tc.assigneeDisplayName ? { name: tc.assigneeDisplayName, initials: initialsOf(tc.assigneeDisplayName) } : null} size={24} />
+                      <Avatar person={tc.assigneeDisplayName ? { name: tc.assigneeDisplayName, initials: initialsOf(tc.assigneeDisplayName) } : null} size={22} />
                     </div>
                   </div>
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
 
             {filtered.length > PAGE_SIZE && (
               <div className="pager">
@@ -239,8 +253,15 @@ export function TestCasesPage() {
             )}
           </div>
 
-          {selected && <TestCaseDrawer tc={selected} onClose={() => setSelectedId(null)} />}
+          {selected && <TestCaseDrawer tc={selected} onClose={() => setSelectedId(null)} initialTab={initialTab} />}
         </div>
+
+        <NewTestCaseModal
+          open={newOpen}
+          onClose={() => setNewOpen(false)}
+          projects={deriveProjects(all).map((p) => p.key)}
+          onCreated={(id) => { setNewOpen(false); setSelectedId(id); }}
+        />
       </div>
     </div>
   );

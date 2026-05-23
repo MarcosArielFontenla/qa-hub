@@ -67,4 +67,53 @@ public sealed class GherkinParserServiceTests
         Assert.Null(result.FeatureName);
         Assert.Contains("@smoke", result.Tags);
     }
+
+    [Fact]
+    public void Validate_accepts_valid_english_gherkin_and_extracts_metadata()
+    {
+        const string gherkin = """
+            @smoke @login
+            Feature: Login
+              Scenario: Valid login
+                Given a registered user
+                When they submit valid credentials
+                Then they reach the dashboard
+            """;
+
+        var result = parser.Validate(gherkin);
+
+        Assert.True(result.IsValid);
+        Assert.Null(result.Error);
+        Assert.Equal("Login", result.Document.FeatureName);
+        Assert.Equal("Valid login", result.Document.ScenarioName);
+        Assert.Contains("@smoke", result.Document.Tags);
+    }
+
+    [Fact]
+    public void Validate_accepts_spanish_gherkin()
+    {
+        const string gherkin = """
+            Característica: Ingreso
+              Escenario: Ingreso válido
+                Dado un usuario registrado
+                Cuando ingresa credenciales válidas
+                Entonces ve el dashboard
+            """;
+
+        var result = parser.Validate(gherkin);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("Ingreso", result.Document.FeatureName);
+    }
+
+    [Fact]
+    public void Validate_rejects_empty_and_malformed_gherkin()
+    {
+        Assert.False(parser.Validate("").IsValid);
+        Assert.False(parser.Validate("   ").IsValid);
+        // No Feature keyword:
+        Assert.False(parser.Validate("just some random text").IsValid);
+        // Feature with no scenario:
+        Assert.False(parser.Validate("Feature: Empty").IsValid);
+    }
 }

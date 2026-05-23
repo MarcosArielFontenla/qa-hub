@@ -94,6 +94,76 @@ public sealed class ApplicationBehaviorTests
     }
 
     [Fact]
+    public async Task CreateAsync_inserts_a_local_test_case()
+    {
+        var db = CreateDb();
+        var store = new EfTestCaseStore(db, new SystemClock());
+
+        var dto = new TestCaseDto(
+            Guid.NewGuid(), null, null, "DEMO", null, null, "Local", "Caso local",
+            "Login", "Valid login", "Feature: Login\n  Scenario: Valid login\n    Given x",
+            ["@smoke"], [], null, null, null,
+            AutomationStatus.ManualOnly, null, null, null,
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+
+        var created = await store.CreateAsync(dto, CancellationToken.None);
+
+        Assert.NotEqual(Guid.Empty, created.Id);
+        Assert.Null(created.JiraIssueKey);
+        Assert.Equal("DEMO", created.ProjectKey);
+
+        var all = await store.GetAllAsync(CancellationToken.None);
+        Assert.Single(all);
+        Assert.Equal("Caso local", all[0].Summary);
+    }
+
+    private static (QaTestCaseHub.Modules.TestCases.Application.TestCaseApplicationService Service, EfTestCaseStore Store) CreateTestCaseService()
+    {
+        var db = CreateDb();
+        var clock = new SystemClock();
+        var store = new EfTestCaseStore(db, clock);
+        var service = new QaTestCaseHub.Modules.TestCases.Application.TestCaseApplicationService(
+            store,
+            new SpyJiraClient(),
+            new QaTestCaseHub.Shared.Infrastructure.Gherkin.GherkinParserService(),
+            new QaTestCaseHub.Shared.Infrastructure.Exports.TestCaseExportService());
+        return (service, store);
+    }
+
+    [Fact]
+    public async Task CreateLocalAsync_creates_local_case_with_parsed_metadata()
+    {
+        var (service, _) = CreateTestCaseService();
+
+        var dto = await service.CreateLocalAsync(
+            new CreateTestCaseRequest(
+                "DEMO",
+                "Login con email válido",
+                "@smoke @login\nFeature: Login\n  Scenario: Valid login\n    Given a user\n    When login\n    Then dashboard",
+                "High"),
+            CancellationToken.None);
+
+        Assert.Null(dto.JiraIssueKey);
+        Assert.Equal("Local", dto.IssueType);
+        Assert.Equal("DEMO", dto.ProjectKey);
+        Assert.Equal("Login", dto.FeatureName);
+        Assert.Contains("@smoke", dto.Tags);
+        Assert.Equal(AutomationStatus.ManualOnly, dto.AutomationStatus);
+    }
+
+    [Fact]
+    public async Task CreateLocalAsync_rejects_invalid_gherkin_and_empty_fields()
+    {
+        var (service, _) = CreateTestCaseService();
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateLocalAsync(
+            new CreateTestCaseRequest("DEMO", "x", "no gherkin here", null), CancellationToken.None));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CreateLocalAsync(
+            new CreateTestCaseRequest("", "x", "Feature: F\n  Scenario: S\n    Given a", null), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task GetTestCases_respects_tag_and_project_filters()
     {
         var db = CreateDb();

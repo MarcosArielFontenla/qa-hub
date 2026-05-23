@@ -12,7 +12,7 @@ export function DashboardPage() {
 
   const casesQuery = useQuery({ queryKey: ['all-test-cases'], queryFn: getAllTestCases });
   const healthQuery = useQuery({ queryKey: ['health'], queryFn: getHealth });
-  const recentQuery = useQuery({ queryKey: ['recent-executions'], queryFn: () => getRecentExecutions(50) });
+  const recentQuery = useQuery({ queryKey: ['recent-executions', 50], queryFn: () => getRecentExecutions(50) });
 
   const all = casesQuery.data ?? [];
   const activity = recentQuery.data ?? [];
@@ -54,6 +54,9 @@ export function DashboardPage() {
       </div>
 
       <div className="scroll">
+        {casesQuery.isError && (
+          <div className="error-banner">⚠️ No se pudo conectar con el backend. Verificá que esté arriba (Settings → Estado).</div>
+        )}
         <div className="hero">
           <div className="hero-l">
             <span className="hero-emoji">👋</span>

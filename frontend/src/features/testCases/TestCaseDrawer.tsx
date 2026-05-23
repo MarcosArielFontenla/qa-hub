@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createExecution, getExecutions, getJiraSettings, updateAutomationStatus, type CreateExecutionPayload } from '../../api/testCasesApi';
 import { Avatar, AutomationPill, GherkinPre, JiraStatusPill, StatusPill, Tag } from '../../components/design/primitives';
 import { Popover } from '../../components/design/filters';
-import { fmtDate, fmtRel, initialsOf, projEmoji } from '../../lib/design';
+import { fmtDate, fmtRel, initialsOf, jiraBrowseUrl, projEmoji } from '../../lib/design';
 import type { AutomationStatus, ExecutionResult, TestCaseDto } from '../../types/contracts';
 
 const AUTOMATION_STATUSES: AutomationStatus[] = ['ManualOnly', 'ReadyToAutomate', 'InAutomation', 'Automated', 'Flaky', 'Deprecated'];
@@ -18,11 +18,6 @@ interface ExecState {
   createBug: boolean;
   bugSummary: string;
   bugDescription: string;
-}
-
-function jiraUrl(baseUrl: string | null | undefined, key: string | null | undefined) {
-  if (!baseUrl || !key) return null;
-  return `${baseUrl.replace(/\/+$/, '')}/browse/${key}`;
 }
 
 function AutomationMenu({ tc }: { tc: TestCaseDto }) {
@@ -58,9 +53,9 @@ function AutomationMenu({ tc }: { tc: TestCaseDto }) {
   );
 }
 
-export function TestCaseDrawer({ tc, onClose }: { tc: TestCaseDto; onClose: () => void }) {
+export function TestCaseDrawer({ tc, onClose, initialTab = 'gherkin' }: { tc: TestCaseDto; onClose: () => void; initialTab?: DrawerTab }) {
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<DrawerTab>('gherkin');
+  const [tab, setTab] = useState<DrawerTab>(initialTab);
   const [copied, setCopied] = useState(false);
   const [exec, setExec] = useState<ExecState>(() => ({
     result: 'Pass',
@@ -73,15 +68,15 @@ export function TestCaseDrawer({ tc, onClose }: { tc: TestCaseDto; onClose: () =
   }));
 
   useEffect(() => {
-    setTab('gherkin');
+    setTab(initialTab);
     setExec((prev) => ({ ...prev, result: 'Pass', comment: '', evidenceUrl: '', bugSummary: `[${tc.jiraIssueKey ?? 'LOCAL'}] ${tc.summary}` }));
-  }, [tc.id, tc.jiraIssueKey, tc.summary]);
+  }, [tc.id, tc.jiraIssueKey, tc.summary, initialTab]);
 
   const jiraSettingsQuery = useQuery({ queryKey: ['jira-settings'], queryFn: getJiraSettings });
   const executionsQuery = useQuery({ queryKey: ['executions', tc.id], queryFn: () => getExecutions(tc.id) });
   const executions = executionsQuery.data ?? [];
   const lastExec = executions[0];
-  const link = jiraUrl(jiraSettingsQuery.data?.baseUrl, tc.jiraIssueKey);
+  const link = jiraBrowseUrl(jiraSettingsQuery.data?.baseUrl, tc.jiraIssueKey);
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateExecutionPayload) => createExecution(tc.id, payload),

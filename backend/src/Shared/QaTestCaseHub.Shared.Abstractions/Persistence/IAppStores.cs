@@ -12,6 +12,7 @@ public interface ITestCaseStore
     Task<TestCaseDto?> GetByJiraKeyAsync(string jiraIssueKey, CancellationToken cancellationToken);
     Task<TestCaseDto?> UpdateAutomationStatusAsync(Guid id, AutomationStatus automationStatus, CancellationToken cancellationToken);
     Task<TestCaseDto> UpsertFromJiraAsync(TestCaseDto testCase, CancellationToken cancellationToken);
+    Task<TestCaseDto> CreateAsync(TestCaseDto testCase, CancellationToken cancellationToken);
     Task UpdateLastExecutionAsync(Guid id, ExecutionResult result, DateTimeOffset executedAt, CancellationToken cancellationToken);
     Task EnsureMockDataAsync(CancellationToken cancellationToken);
 }

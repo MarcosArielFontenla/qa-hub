@@ -96,6 +96,40 @@ public sealed class EfTestCaseStore(QaHubDbContext dbContext, IClock clock) : IT
         return ToDto(record);
     }
 
+    public async Task<TestCaseDto> CreateAsync(TestCaseDto testCase, CancellationToken cancellationToken)
+    {
+        var now = clock.UtcNow;
+        var record = new TestCaseRecord
+        {
+            Id = testCase.Id == Guid.Empty ? Guid.NewGuid() : testCase.Id,
+            JiraIssueId = testCase.JiraIssueId,
+            JiraIssueKey = testCase.JiraIssueKey,
+            ProjectKey = testCase.ProjectKey,
+            ParentIssueKey = testCase.ParentIssueKey,
+            ParentSummary = testCase.ParentSummary,
+            IssueType = testCase.IssueType,
+            Summary = testCase.Summary,
+            FeatureName = testCase.FeatureName,
+            ScenarioName = testCase.ScenarioName,
+            GherkinText = testCase.GherkinText,
+            Tags = testCase.Tags.ToArray(),
+            Labels = testCase.Labels.ToArray(),
+            Priority = testCase.Priority,
+            JiraStatus = testCase.JiraStatus,
+            AssigneeDisplayName = testCase.AssigneeDisplayName,
+            AutomationStatus = testCase.AutomationStatus,
+            LastExecutionResult = testCase.LastExecutionResult,
+            LastExecutedAt = testCase.LastExecutedAt,
+            LastSyncedAt = null,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        dbContext.TestCases.Add(record);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToDto(record);
+    }
+
     public async Task UpdateLastExecutionAsync(Guid id, ExecutionResult result, DateTimeOffset executedAt, CancellationToken cancellationToken)
     {
         var record = await dbContext.TestCases.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);

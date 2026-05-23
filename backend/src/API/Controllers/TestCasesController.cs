@@ -22,6 +22,13 @@ public sealed class TestCasesController(TestCaseApplicationService testCaseServi
         return item is null ? NotFound() : Ok(item);
     }
 
+    [HttpPost]
+    public async Task<ActionResult<TestCaseDto>> Create(CreateTestCaseRequest request, CancellationToken cancellationToken)
+    {
+        var created = await testCaseService.CreateLocalAsync(request, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+    }
+
     [HttpPatch("{id:guid}/automation-status")]
     public async Task<ActionResult<TestCaseDto>> UpdateAutomationStatus(Guid id, UpdateAutomationStatusRequest request, CancellationToken cancellationToken)
     {

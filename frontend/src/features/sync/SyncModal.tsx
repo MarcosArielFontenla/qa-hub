@@ -1,7 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getHealth, syncJira } from '../../api/testCasesApi';
+import { apiError } from '../../api/httpClient';
 import { buildDefaultSyncJql } from '../../lib/jiraWorkflow';
+
+// Friendly Spanish messages for the backend's standard Jira error codes.
+const ERROR_HINTS: Record<string, string> = {
+  JIRA_AUTH_FAILED: 'Credenciales de Jira inválidas. Revisá JIRA_EMAIL y JIRA_API_TOKEN en backend/src/API/.env y reiniciá.',
+  JIRA_RATE_LIMITED: 'Jira limitó las solicitudes (rate limit). Esperá unos segundos y reintentá.',
+  VALIDATION_ERROR: 'El JQL no es válido. Revisá la query.',
+  DATABASE_ERROR: 'No se pudo guardar en la base de datos. Verificá la conexión (Settings → Estado).'
+};
 
 const PRESETS = [
   'project = SCRUM ORDER BY updated DESC',
@@ -91,19 +100,30 @@ export function SyncModal({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
 
           {syncMutation.isError ? (
-            <div
-              style={{
-                marginTop: 16,
-                padding: '12px 14px',
-                background: 'var(--fail-bg)',
-                border: '1px solid #F5C7C2',
-                borderRadius: 12,
-                fontSize: 12.5,
-                color: 'var(--fail-fg)'
-              }}
-            >
-              No se pudo sincronizar. Verificá el JQL y la conexión con Jira.
-            </div>
+            (() => {
+              const err = apiError(syncMutation.error);
+              const code = err?.code;
+              const hint = (code && ERROR_HINTS[code]) || err?.message || 'Verificá el JQL y la conexión con Jira.';
+              return (
+                <div
+                  style={{
+                    marginTop: 16,
+                    padding: '12px 14px',
+                    background: 'var(--fail-bg)',
+                    border: '1px solid #F5C7C2',
+                    borderRadius: 12,
+                    fontSize: 12.5,
+                    color: 'var(--fail-fg)'
+                  }}
+                >
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    ⚠️ No se pudo sincronizar
+                    {code && <span className="mono" style={{ fontSize: 11, opacity: 0.8 }}>· {code}</span>}
+                  </div>
+                  <div style={{ marginTop: 4 }}>{hint}</div>
+                </div>
+              );
+            })()
           ) : (
             <div
               style={{

@@ -50,6 +50,12 @@ public sealed record TestCaseQuery(
 
 public sealed record UpdateAutomationStatusRequest(AutomationStatus AutomationStatus);
 
+public sealed record CreateTestCaseRequest(
+    string ProjectKey,
+    string Summary,
+    string GherkinText,
+    string? Priority);
+
 public sealed record SyncJiraRequest(string Jql, int MaxResults = 200);
 
 public sealed record SyncJiraResponse(

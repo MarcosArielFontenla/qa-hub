@@ -22,6 +22,56 @@ public sealed class TestCaseApplicationService(
     public Task<TestCaseDto?> UpdateAutomationStatusAsync(Guid id, AutomationStatus automationStatus, CancellationToken cancellationToken)
         => testCaseStore.UpdateAutomationStatusAsync(id, automationStatus, cancellationToken);
 
+    public async Task<TestCaseDto> CreateLocalAsync(CreateTestCaseRequest request, CancellationToken cancellationToken)
+    {
+        var projectKey = request.ProjectKey?.Trim() ?? string.Empty;
+        var summary = request.Summary?.Trim() ?? string.Empty;
+        var gherkin = request.GherkinText?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(projectKey))
+        {
+            throw new ArgumentException("El proyecto es obligatorio.");
+        }
+
+        if (string.IsNullOrWhiteSpace(summary))
+        {
+            throw new ArgumentException("El summary es obligatorio.");
+        }
+
+        var validation = gherkinParser.Validate(gherkin);
+        if (!validation.IsValid)
+        {
+            throw new ArgumentException($"Gherkin inválido: {validation.Error}");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var dto = new TestCaseDto(
+            Guid.NewGuid(),
+            null,
+            null,
+            projectKey,
+            null,
+            null,
+            "Local",
+            summary,
+            validation.Document.FeatureName,
+            validation.Document.ScenarioName,
+            gherkin,
+            validation.Document.Tags,
+            [],
+            string.IsNullOrWhiteSpace(request.Priority) ? null : request.Priority,
+            null,
+            null,
+            AutomationStatus.ManualOnly,
+            null,
+            null,
+            null,
+            now,
+            now);
+
+        return await testCaseStore.CreateAsync(dto, cancellationToken);
+    }
+
     public async Task<SyncJiraResponse> SyncFromJiraAsync(SyncJiraRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Jql))

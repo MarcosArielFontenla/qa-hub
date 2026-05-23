@@ -36,6 +36,18 @@ export async function getAllTestCases() {
   return response.data.items;
 }
 
+export interface CreateTestCasePayload {
+  projectKey: string;
+  summary: string;
+  gherkinText: string;
+  priority?: string;
+}
+
+export async function createTestCase(payload: CreateTestCasePayload) {
+  const response = await httpClient.post<TestCaseDto>('/api/test-cases', payload);
+  return response.data;
+}
+
 export async function getRecentExecutions(take = 20) {
   const response = await httpClient.get<TestExecutionDto[]>('/api/executions', { params: { take } });
   return response.data;

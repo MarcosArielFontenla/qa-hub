@@ -64,13 +64,29 @@ app.MapHealthChecks("/healthz");
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<QaHubDbContext>();
-    if (dbContext.Database.IsRelational())
+    var isRelational = dbContext.Database.IsRelational();
+    if (isRelational)
     {
         await dbContext.Database.MigrateAsync();
     }
 
     var jiraOptions = scope.ServiceProvider.GetRequiredService<IOptions<JiraOptions>>().Value;
-    if (jiraOptions.MockMode || !dbContext.Database.IsRelational())
+    var useMock = jiraOptions.MockMode || !jiraOptions.HasCredentials;
+    var willSeed = jiraOptions.MockMode || !isRelational;
+
+    // Clear startup summary so operators can immediately see how the app is wired
+    // (and why they might be seeing demo data instead of their real Jira).
+    app.Logger.LogInformation(
+        "QA Test Case Hub starting · Database: {Db} · Jira: {JiraMode}{JiraReason}",
+        isRelational ? "PostgreSQL (relational)" : "InMemory (no DATABASE_URL — demo only)",
+        useMock ? "MOCK" : "REAL",
+        useMock
+            ? jiraOptions.MockMode
+                ? " (JIRA_MOCK_MODE=true)"
+                : " (missing/placeholder credentials — set JIRA_BASE_URL/EMAIL/API_TOKEN)"
+            : $" (connected to {jiraOptions.BaseUrl})");
+
+    if (willSeed)
     {
         await scope.ServiceProvider.GetRequiredService<ITestCaseStore>().EnsureMockDataAsync(CancellationToken.None);
     }

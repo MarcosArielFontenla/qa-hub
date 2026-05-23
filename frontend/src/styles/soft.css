@@ -464,6 +464,52 @@ nav.snav { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
 }
 .tc-meta .dot { width: 4px; height: 4px; border-radius: 999px; background: var(--text-4); display: inline-block; }
 
+/* ---------- test case cards (grid view) ---------- */
+.tcgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+  gap: 14px;
+  padding: 16px 18px;
+}
+.tccard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--text-4);
+  border-radius: 14px;
+  padding: 13px 15px;
+  cursor: pointer;
+  display: flex; flex-direction: column; gap: 9px;
+  transition: box-shadow 120ms, border-color 120ms, transform 120ms;
+}
+.tccard:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.tccard.active { background: var(--accent-soft); border-color: var(--accent); }
+.tccard.active .tc-key { background: rgba(124,92,255,0.15); color: var(--accent); }
+/* status stripe — declared after .active so the left edge keeps its result color */
+.tccard.pass   { border-left-color: var(--pass-dot); }
+.tccard.fail   { border-left-color: var(--fail-dot); }
+.tccard.blk    { border-left-color: var(--blk-dot); }
+.tccard.notrun { border-left-color: #CFC8DC; }
+.tccard-top  { display: flex; align-items: center; gap: 8px; }
+.tccard-top .pill { margin-left: auto; }
+.tccard .tc-sum {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tccard-foot { display: flex; align-items: center; gap: 7px; }
+.tccard-foot .tc-meta { margin-top: 0; flex: 1; min-width: 0; }
+
+/* reusable error banner (backend/data load failures) */
+.error-banner {
+  margin: 16px 28px 0;
+  padding: 12px 16px;
+  background: var(--fail-bg);
+  border: 1px solid #F5C7C2;
+  border-radius: 12px;
+  color: var(--fail-fg);
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 8px;
+}
+
 .tag {
   display: inline-flex; align-items: center;
   height: 20px; padding: 0 8px;

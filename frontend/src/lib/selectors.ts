@@ -1,4 +1,4 @@
-import type { ExecutionResult, TestCaseDto } from '../types/contracts';
+import type { ExecutionResult, TestCaseDto, TestExecutionDto } from '../types/contracts';
 
 export type ResultKey = 'Pass' | 'Fail' | 'Blocked' | 'NotRun';
 
@@ -124,6 +124,62 @@ export function filterCases(cases: TestCaseDto[], f: CaseFilters, search: string
         (tc.featureName || '').toLowerCase().includes(s);
       if (!hit) return false;
     }
+    return true;
+  });
+}
+
+export interface OpenBugRow {
+  testCase: TestCaseDto;
+  /** Jira bug key from the most recent execution that reported one, or null. */
+  bugKey: string | null;
+  /** Who ran the most recent execution for this case. */
+  executedBy: string | null;
+  /** When the case last failed (most recent execution, falling back to lastExecutedAt). */
+  failedAt: string | null;
+}
+
+// Open bugs = test cases whose current result is Fail. Each row is enriched with the
+// most recent execution's data (bug key / executor / date). `executions` is expected
+// ordered by createdAt DESC (as returned by GET /api/executions). Returns rows sorted
+// by failedAt DESC. Cases failing without a reported bug have bugKey === null.
+export function openBugs(cases: TestCaseDto[], executions: TestExecutionDto[]): OpenBugRow[] {
+  const recentByCase = new Map<string, TestExecutionDto>();
+  const bugByCase = new Map<string, TestExecutionDto>();
+  for (const ex of executions) {
+    if (!recentByCase.has(ex.testCaseId)) recentByCase.set(ex.testCaseId, ex);
+    if (ex.jiraBugKey && !bugByCase.has(ex.testCaseId)) bugByCase.set(ex.testCaseId, ex);
+  }
+  return cases
+    .filter((tc) => resultOf(tc) === 'Fail')
+    .map((tc) => {
+      const recent = recentByCase.get(tc.id);
+      const bugEx = bugByCase.get(tc.id);
+      return {
+        testCase: tc,
+        bugKey: bugEx?.jiraBugKey ?? null,
+        executedBy: recent?.executedBy ?? null,
+        failedAt: recent?.createdAt ?? tc.lastExecutedAt ?? null
+      };
+    })
+    .sort((a, b) => (b.failedAt ?? '').localeCompare(a.failedAt ?? ''));
+}
+
+// Resolves the project key for an execution: prefers the joined test case's project,
+// falling back to the Jira issue key prefix (e.g. "SCRUM-12" → "SCRUM").
+export function execProjectKey(ex: TestExecutionDto, projByCase: Map<string, string>): string {
+  return projByCase.get(ex.testCaseId) ?? ex.jiraIssueKey?.split('-')[0] ?? '—';
+}
+
+// Filters the executions feed by result and/or project (empty set = no filter).
+export function filterExecutions(
+  executions: TestExecutionDto[],
+  projByCase: Map<string, string>,
+  result: Set<string>,
+  project: Set<string>
+): TestExecutionDto[] {
+  return executions.filter((ex) => {
+    if (result.size && !result.has(ex.result)) return false;
+    if (project.size && !project.has(execProjectKey(ex, projByCase))) return false;
     return true;
   });
 }

@@ -26,9 +26,8 @@ export function Sidebar() {
   const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: '📊', count: null as number | null, disabled: false, to: '/dashboard' },
     { key: 'test-cases', label: 'Test cases', icon: <span className="sq" style={{ background: '#7C5CFF' }}>QA</span>, count: totalCases, disabled: false, to: '/test-cases' },
-    { key: 'bugs', label: 'Bugs abiertos', icon: '🐞', count: failedCount, disabled: true, to: '#' },
-    { key: 'executions', label: 'Ejecuciones', icon: '🕒', count: null, disabled: true, to: '#' },
-    { key: 'favorites', label: 'Favoritos', icon: '⭐', count: null, disabled: true, to: '#' }
+    { key: 'bugs', label: 'Bugs abiertos', icon: '🐞', count: failedCount, disabled: false, to: '/bugs' },
+    { key: 'executions', label: 'Ejecuciones', icon: '🕒', count: null, disabled: false, to: '/executions' }
   ];
 
   const go = (to: string) => navigate(to);

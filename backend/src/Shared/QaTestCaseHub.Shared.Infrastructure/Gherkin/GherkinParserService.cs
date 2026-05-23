@@ -13,11 +13,13 @@ namespace QaTestCaseHub.Shared.Infrastructure.Gherkin;
 /// </summary>
 public sealed partial class GherkinParserService : IGherkinParserService
 {
-    public ParsedGherkinDocument Parse(string? content)
+    public ParsedGherkinDocument Parse(string? content) => Validate(content).Document;
+
+    public GherkinValidationResult Validate(string? content)
     {
         if (string.IsNullOrWhiteSpace(content))
         {
-            return new ParsedGherkinDocument(null, null, []);
+            return new GherkinValidationResult(false, "El Gherkin está vacío.", new ParsedGherkinDocument(null, null, []));
         }
 
         var prepared = EnsureLanguageHeader(content);
@@ -28,7 +30,10 @@ public sealed partial class GherkinParserService : IGherkinParserService
             var feature = document.Feature;
             if (feature is null)
             {
-                return new ParsedGherkinDocument(null, null, ExtractTagsFallback(content));
+                return new GherkinValidationResult(
+                    false,
+                    "Falta la declaración 'Feature:' (o 'Característica:').",
+                    new ParsedGherkinDocument(null, null, ExtractTagsFallback(content)));
             }
 
             var scenarios = feature.Children.OfType<Scenario>().ToList();
@@ -38,16 +43,23 @@ public sealed partial class GherkinParserService : IGherkinParserService
                 .Distinct()
                 .ToList();
 
-            return new ParsedGherkinDocument(
+            var parsed = new ParsedGherkinDocument(
                 string.IsNullOrWhiteSpace(feature.Name) ? null : feature.Name.Trim(),
                 string.IsNullOrWhiteSpace(firstScenario?.Name) ? null : firstScenario!.Name.Trim(),
                 tags);
+
+            if (scenarios.Count == 0)
+            {
+                return new GherkinValidationResult(false, "El feature no tiene ningún Scenario/Escenario.", parsed);
+            }
+
+            return new GherkinValidationResult(true, null, parsed);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Gherkin inválido o incompleto: degradamos a extraer solo tags por regex
-            // para que la sincronización desde Jira no falle por un único issue mal formado.
-            return new ParsedGherkinDocument(null, null, ExtractTagsFallback(content));
+            // Gherkin inválido o incompleto: Parse degrada a extraer solo tags por regex (para que la
+            // sincronización desde Jira no falle por un único issue mal formado); Validate informa el error.
+            return new GherkinValidationResult(false, ex.Message, new ParsedGherkinDocument(null, null, ExtractTagsFallback(content)));
         }
     }
 
